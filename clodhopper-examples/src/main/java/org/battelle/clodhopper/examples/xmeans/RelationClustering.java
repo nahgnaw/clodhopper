@@ -1,5 +1,7 @@
 package org.battelle.clodhopper.examples.xmeans;
 
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.*;
 import java.io.File;
 import java.util.concurrent.ExecutionException;
@@ -29,6 +31,7 @@ public class RelationClustering {
 
 //        String dataset = "genes-cancer";
         String dataset = "RiMG75";
+
         try {
             Scanner EmbeddingFile =
                     new Scanner(new File("/Users/HanWang/Workspace/sci-kb/data/" + dataset + "/subj_obj_embeddings.txt"));
@@ -132,9 +135,9 @@ public class RelationClustering {
 
             // Don't have to worry about these, because the task outcome will tell you what happened.
         } catch (InterruptedException e1) {
-
+            e1.printStackTrace();
         } catch (ExecutionException e2) {
-
+            e2.printStackTrace();
         }
 
         if (xmeans.getTaskOutcome() == TaskOutcome.SUCCESS) {
@@ -151,23 +154,27 @@ public class RelationClustering {
             // May not be the same as clusterCount, since XMeans attempted to statistically discern the distribution.
             final int xmeansClusterCount = clusters.size();
             System.out.printf("\nXMeans Generated %d Clusters\n", xmeansClusterCount);
-            for (int i=0; i<xmeansClusterCount; i++) {
-                StringBuilder sb = new StringBuilder("[");
-                Cluster c = clusters.get(i);
-                int clusterSize = c.getMemberCount();
-                int[] clusterMembers = new int[clusterSize];
-                for (int j = 0; j < clusterSize; j++) {
-                    clusterMembers[j] = c.getMember(j);
+
+            try {
+                File clusterFile = new File("/Users/HanWang/Workspace/sci-kb/data/" + dataset + "/clusters.txt");
+                if (!clusterFile.exists()) {
+                    clusterFile.createNewFile();
                 }
-//                double[] center = c.getCenter();
-//                for (int j=0; j<tupleLength; j++) {
-//                    if (j > 0) {
-//                        sb.append(", ");
-//                    }
-//                    sb.append(String.format("%5.2f", center[j]));
-//                }
-//                sb.append("]");
-                System.out.printf("Cluster %d: size = %d, members = %s\n", (i+1), clusterSize, Arrays.toString(clusterMembers));
+                FileWriter wr = new FileWriter(clusterFile);
+                for (int i = 0; i < xmeansClusterCount; i++) {
+                    StringBuilder sb = new StringBuilder("[");
+                    Cluster c = clusters.get(i);
+                    int clusterSize = c.getMemberCount();
+                    int[] clusterMembers = new int[clusterSize];
+                    for (int j = 0; j < clusterSize; j++) {
+                        clusterMembers[j] = c.getMember(j);
+                        wr.write(clusterMembers[j] + " ");
+                    }
+                    wr.write(System.getProperty("line.separator"));
+                    System.out.printf("Cluster %d: size = %d, members = %s\n", (i + 1), clusterSize, Arrays.toString(clusterMembers));
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
     }
