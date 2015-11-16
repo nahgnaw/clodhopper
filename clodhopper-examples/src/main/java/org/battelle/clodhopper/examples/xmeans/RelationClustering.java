@@ -29,8 +29,8 @@ public class RelationClustering {
         int tupleCount = 0;
         List<Double> dataArrayList = new ArrayList<> ();
 
-//        String dataset = "genes-cancer";
-        String dataset = "RiMG75";
+        String dataset = "genes-cancer";
+//        String dataset = "RiMG75";
 
         try {
             Scanner EmbeddingFile =
