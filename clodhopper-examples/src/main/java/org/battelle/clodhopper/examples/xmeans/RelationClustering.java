@@ -7,18 +7,54 @@ import java.io.File;
 import java.util.concurrent.ExecutionException;
 
 import org.battelle.clodhopper.Cluster;
+import org.battelle.clodhopper.ClusterStats;
 import org.battelle.clodhopper.Clusterer;
 import org.battelle.clodhopper.distance.DistanceMetric;
 import org.battelle.clodhopper.examples.TupleGenerator;
 import org.battelle.clodhopper.seeding.ClusterSeeder;
+import org.battelle.clodhopper.seeding.PreassignedSeeder;
 import org.battelle.clodhopper.task.*;
 import org.battelle.clodhopper.tuple.ArrayTupleList;
 import org.battelle.clodhopper.tuple.TupleList;
+import org.battelle.clodhopper.tuple.TupleMath;
+import org.battelle.clodhopper.util.ArrayIntIterator;
 import org.battelle.clodhopper.xmeans.XMeansClusterer;
 import org.battelle.clodhopper.xmeans.XMeansParams;
 
 
 public class RelationClustering {
+
+    /**
+     * Create two cluster seeds by going +/- one standard deviation from the
+     * cluster's center.
+     *
+     * @param cluster the cluster of concern.
+     *
+     * @return TupleList containing two seeds
+     */
+    private static TupleList createTwoSeeds(TupleList tuples, final Cluster cluster) {
+
+        int dim = tuples.getTupleLength();
+
+        double[][] stats = ClusterStats.computeMeanAndVariance(tuples, cluster);
+
+        TupleList seeds = new ArrayTupleList(dim, 2);
+
+        double[] seed1 = new double[dim];
+        double[] seed2 = new double[dim];
+
+        for (int i = 0; i < dim; i++) {
+            double center = stats[i][0];
+            double sdev = Math.sqrt(stats[i][1]);
+            seed1[i] = center - sdev;
+            seed2[i] = center + sdev;
+        }
+
+        seeds.setTuple(0, seed1);
+        seeds.setTuple(1, seed2);
+
+        return seeds;
+    }
 
     public static void main(String[] args) {
 
@@ -29,12 +65,13 @@ public class RelationClustering {
         int tupleCount = 0;
         List<Double> dataArrayList = new ArrayList<> ();
 
-        String dataset = "genes-cancer";
-//        String dataset = "RiMG75";
+//        String dataset = "genes-cancer";
+        String dataset = "RiMG75";
+        String embedding_file = "/Users/HanWang/Workspace/sci-kb/data/" + dataset + "/subj_obj_embeddings.txt";
 
         try {
             Scanner EmbeddingFile =
-                    new Scanner(new File("/Users/HanWang/Workspace/sci-kb/data/" + dataset + "/subj_obj_embeddings.txt"));
+                    new Scanner(new File(embedding_file));
             while(EmbeddingFile.hasNextLine()){
                 String line = EmbeddingFile.nextLine();
                 Scanner scanner = new Scanner(line);
@@ -58,9 +95,22 @@ public class RelationClustering {
         // Wrap the data in an ArrayTupleList.
         TupleList tupleData = new ArrayTupleList(tupleLength, tupleCount, data);
 
+        // Initial seed
+        int[] allIDs = new int[tupleCount];
+        for (int i = 0; i < tupleCount; i++) {
+            allIDs[i] = i;
+        }
+        double[] center = TupleMath.average(tupleData, new ArrayIntIterator(allIDs));
+        Cluster cluster = new Cluster(allIDs, center);
+        TupleList initSeeds = createTwoSeeds(tupleData, cluster);
+
         // Construct the parameters.
         XMeansParams.Builder builder = new XMeansParams.Builder();
-        XMeansParams params = builder.minClusters(minClusterNo).maxClusters(maxClusterNo).build();
+        XMeansParams params = builder.minClusters(minClusterNo)
+                                     .maxClusters(maxClusterNo)
+                                     .minClusterToMeanThreshold(0.01)
+                                     .clusterSeeder(new PreassignedSeeder(initSeeds))
+                                     .build();
 
         // Display the default xmeans parameters.
         //
@@ -161,18 +211,22 @@ public class RelationClustering {
                     clusterFile.createNewFile();
                 }
                 FileWriter wr = new FileWriter(clusterFile);
+                int memberCount = 0;
                 for (int i = 0; i < xmeansClusterCount; i++) {
-                    StringBuilder sb = new StringBuilder("[");
                     Cluster c = clusters.get(i);
                     int clusterSize = c.getMemberCount();
                     int[] clusterMembers = new int[clusterSize];
                     for (int j = 0; j < clusterSize; j++) {
                         clusterMembers[j] = c.getMember(j);
                         wr.write(clusterMembers[j] + " ");
+                        memberCount++;
                     }
                     wr.write(System.getProperty("line.separator"));
                     System.out.printf("Cluster %d: size = %d, members = %s\n", (i + 1), clusterSize, Arrays.toString(clusterMembers));
                 }
+                wr.flush();
+                wr.close();
+                System.out.printf("Total data point: %d\n", memberCount);
             } catch (IOException e) {
                 e.printStackTrace();
             }
