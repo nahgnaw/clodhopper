@@ -65,8 +65,8 @@ public class RelationClustering {
         int tupleCount = 0;
         List<Double> dataArrayList = new ArrayList<> ();
 
-//        String dataset = "genes-cancer";
-        String dataset = "RiMG75";
+        String dataset = "genes-cancer";
+//        String dataset = "RiMG75";
         String embedding_file = "/Users/HanWang/Workspace/sci-kb/data/" + dataset + "/subj_obj_embeddings.txt";
 
         try {
@@ -108,7 +108,7 @@ public class RelationClustering {
         XMeansParams.Builder builder = new XMeansParams.Builder();
         XMeansParams params = builder.minClusters(minClusterNo)
                                      .maxClusters(maxClusterNo)
-                                     .minClusterToMeanThreshold(0.01)
+                                     .minClusterToMeanThreshold(0)
                                      .clusterSeeder(new PreassignedSeeder(initSeeds))
                                      .build();
 
